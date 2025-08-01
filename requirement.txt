@@ -1,0 +1,9 @@
+Flask
+line-bot-sdk
+openai
+gunicorn
+pandas
+pyodbc
+shutil
+os
+datetime
