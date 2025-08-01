@@ -35,27 +35,12 @@ from linebot.models import (
     URITemplateAction, CarouselTemplate, CarouselColumn, MessageTemplateAction
 )
 
-"""
-counter = pd.read_csv('//10.72.228.228/Users/wayne.huang/AppData/Local/CBAS/counter.csv', header = None).iloc[0,0]
-conn = pyodbc.connect(driver = 'ODBC Driver 18 for SQL Server', server = '10.72.228.139', user ='sa', password = 'Self@pscnet', database = 'CBAS', TrustServerCertificate='yes')
-admin = []
-cur = conn.cursor()
-cur.execute(f"SELECT LineID FROM LineID WHERE CUSID = '23218183' or CUSID = 'cbast1' or CUSID = 'cbast2' or CUSID = 'cbast3'")
-fetchall = cur.fetchall()
-for a in range(len(fetchall)):
-    admin.append(fetchall[a][0])
-conn.commit()
-cur.close()
-"""
+
 app = Flask(__name__)
 
-liffid = '1657505414-2KjwZBYy'
 line_bot_api = LineBotApi(os.getenv('LINE_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-@app.route('/page')
-def page():
-    return render_template('query.js', liffid = liffid)
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -79,8 +64,6 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     global counter
-    cb_list = pd.read_excel(r'\\10.72.228.112\cbas業務公用區\官網規劃\FTP\Market_Info\market_info.xlsx', sheet_name='2已發行CB資料', usecols=['CB代號','CB名稱'])
-    cb_dict = dict(zip(cb_list['CB名稱'], cb_list['CB代號']))
     uid = event.source.user_id
     try:
         gid = event.source.group_id
@@ -395,62 +378,7 @@ def carouselsales(event): #CBAS業務相關
     line_bot_api.reply_message(event.reply_token, Contacts)
         
     
-def accStatus(event, uid):
-    #uid = 'U03ed999c65659344f17f36427b6975c5' #test
-    cur = conn.cursor()
-    cur.execute(f"SELECT CUSID FROM LineID WHERE LineID = '{uid}'")
-    cusid = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    df_acc = pd.read_excel(r'\\10.72.228.112\cbas開戶作業區\CBAS開戶扣款進度.xlsm', sheet_name='新開戶', header=[1], usecols=['號碼', '四_開戶進度'])
-    try:
-        status = df_acc.iloc[df_acc.loc[df_acc['號碼'] == cusid].index.item(), 1]
-        if status == 1:
-            reply = '您的開戶已完成，可進行交易，交易前請確認您的自動扣款授權狀態'
-    
-        elif status == 2:
-            reply = '您的KYC(客戶投資能力及風險屬性問卷)已到期、或不符合承作本商品所需之等級。目前僅能履約、不得新作交易。您可以透過統一E指發APP重新填寫KYC，若您有更新KYC，可再通知我們做設定，謝謝您'
-    
-        else:
-            reply = '您的開戶審核中或尚未開戶，待開戶完成後將以Email通知'
-    except:
-        reply = '您尚未開戶，如有開戶需求還請與我們聯絡'
-        
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
-def bankAuthorization(event, uid):
-    #uid = 'U03ed999c65659344f17f36427b6975c5' #test
-    cur = conn.cursor()
-    cur.execute(f"SELECT CUSID FROM LineID WHERE LineID = '{uid}'")
-    cusid = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn_as400 = pyodbc.connect('DSN=PSCDB', UID='FSP631', PWD='FSP631')
-    #cusid = '23218183' #test
-    df_bank = pd.read_sql(f"select a.CUSID, a.BNKFNM, a.BNKACTNO, b.ADMARK, b.RCODE FROM FSPFLIB.FSPCS0M a LEFT JOIN FSPFLIB.FSPEACH01 b ON a.CUSID = b.CUSID WHERE a.CUSID = '{cusid}'", conn_as400)
-    bankName = df_bank.iloc[0,1]
-    bankNumber = df_bank.iloc[0,2]
-    aDMARK = df_bank.iloc[0,3]
-    rCODE = df_bank.iloc[0,4]
-    if len(df_bank) > 0:
-        try:    
-            if aDMARK == 'A' and rCODE == '0':
-                reply = f'您的自動扣款授權已完成，採T+2日交割，早上8:30扣款。\n您的扣款帳號為：\n{bankName.strip()}(*****{bankNumber.strip()[-5:]})'
-            elif aDMARK == 'A' and rCODE != 0:
-                reply = '您的自動扣款授權申請中，完成後將以Email通知'
-            elif aDMARK != 'A':
-                reply = '您尚未申請自動扣款，如需申請請聯絡您的業務人員，配合銀行可參考以下網址：\nhttps://cbas16889.pscnet.com.tw/createAccount'
-                print('S')
-            else:
-                reply = '您尚未開戶，如有開戶需求還請與我們聯絡'
-        
-        except:
-            reply = '您尚未開戶，如有開戶需求還請與我們聯絡'
-    
-    elif len(df_bank) == 0:
-        reply = '您尚未開戶，如有開戶需求還請與我們聯絡'
-    
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
 
 if __name__ == "__main__":
