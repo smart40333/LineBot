@@ -21,8 +21,6 @@ import re
 #import schedule
 #import redis
 from openai import OpenAI
-client = OpenAI(api_key='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')
-
 from flask import Flask, request, abort, render_template
 
 from linebot import (
